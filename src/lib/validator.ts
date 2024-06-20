@@ -15,20 +15,58 @@ export const formSchema = z.object({
   sameAsResidential: z.boolean(),
   street1: z.string().nonempty({ message: "Street 1 is required" }),
   street2: z.string().nonempty({ message: "Street 2 is required" }),
-  street3: z.string().nonempty({ message: "Street 1 is required" }),
-  street4: z.string().nonempty({ message: "Street 2 is required" }),
+  street3: z.string().optional(),
+  street4: z.string().optional(),
   fileName: z.string().nonempty({ message: "File name is required" }),
   fileType: z.string().nonempty({ message: "File type is required" }),
-  file: z
-    .instanceof(File)
-    .refine((file) => file.size <= 5000000, {
+  file: z.instanceof(File).refine(
+    (file) => file instanceof File && file.size <= 5000000,
+    {
       message: "File size should be less than 5MB",
-    }),
+    }
+  ),
   fileName1: z.string().nonempty({ message: "File name is required" }),
   fileType1: z.string().nonempty({ message: "File type is required" }),
-  file1: z
-    .instanceof(File)
-    .refine((file) => file.size <= 5000000, {
+  file1: z.instanceof(File).refine(
+    (file) => file instanceof File && file.size <= 5000000,
+    {
       message: "File size should be less than 5MB",
-    }),
+    }
+  ),
+}).superRefine((data, ctx) => {
+  if (!data.sameAsResidential) {
+    if (!data.street3) {
+      ctx.addIssue({
+        path: ['street3'],
+        message: "Street 1 is required",
+        code: "custom",
+      });
+    }
+    if (!data.street4) {
+      ctx.addIssue({
+        path: ['street4'],
+        message: "Street 2 is required",
+        code: "custom",
+      });
+    }
+  }
+  const fileChecks = [
+    { file: data.file, fileType: data.fileType, path: "file" },
+    { file: data.file1, fileType: data.fileType1, path: "file1" }
+  ];
+  
+  fileChecks.forEach(({ file, fileType, path }) => {
+    if (file && fileType) {
+      const fileTypee = fileType == "application/pdf" ? "application/pdf" : "image/png" || "image/jpeg" || "image/gif" || "image/webp"
+      const expectedMimeType = fileTypee;
+      if (file.type !== expectedMimeType) {
+        ctx.addIssue({
+          path: [path],
+          message: `The file type does not match the selected type: ${fileType}`,
+          code: "custom",
+        });
+      }
+    }
+  });
+  
 });

@@ -1,23 +1,8 @@
-import { useState } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { Button } from "./ui/button"
-import {
-    Form,
-    FormControl,
-    FormDescription,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "./ui/form"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "./ui/select"
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "./ui/form"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "./ui/select"
 import { Input } from "./ui/input"
 import { z } from "zod"
 import axios from 'axios';
@@ -25,8 +10,11 @@ import { formSchema } from '../lib/validator';
 import { Checkbox } from './ui/checkbox';
 import FileInput from './FileInput';
 import DateInput from './DateInput';
+import { useState } from "react"
+import { toast } from "react-toastify"
 
 const FormComponent = () => {
+    const [disabled, setDisabled] = useState<boolean>(false);
     const url = "http://localhost:8000";
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -47,11 +35,23 @@ const FormComponent = () => {
             fileType1: "",
             file1: undefined
         },
-    })
+    });
+    const notify = (value: number) => {
+        if (value === 200) {
+            toast.success("Successfully submitted the form !", {
+                position: "top-right"
+            });
+        } else if (value === 400) {
+            toast.error("Something went wrong", {
+                position: "top-right"
+            });
+        }
+    };
     async function onSubmit(values: z.infer<typeof formSchema>) {
         const formDataToSend = new FormData();
         formDataToSend.append('name', values.firstname + " " + values.lastname);
         formDataToSend.append('dob', values.dob.toISOString());
+        formDataToSend.append('email', values.email);
         formDataToSend.append('residentialAddress', values.street1 + " " + values.street2);
         formDataToSend.append('sameAsResidential', String(values.sameAsResidential));
         if (!values.sameAsResidential) {
@@ -77,72 +77,18 @@ const FormComponent = () => {
                     'Content-Type': 'multipart/form-data'
                 }
             });
-            console.log(response.data);
+            if (response.status == 200) {
+                notify(200);
+                form.reset();
+            } else if (response.status == 400) {
+                notify(400);
+            }
         } catch (error: any) {
             alert('Error submitting form: ' + error.response.data);
         }
-        console.log(values)
     }
 
-    // const handleSubmit = async (e: any) => {
-    //     e.preventDefault();
-
-    //     const formDataToSend = new FormData();
-    //     formDataToSend.append('name', formData.name);
-    //     formDataToSend.append('dob', formData.dob);
-    //     formDataToSend.append('residentialAddress', formData.residentialAddress);
-    //     formDataToSend.append('sameAsResidential', formData.sameAsResidential);
-    //     if (!formData.sameAsResidential) {
-    //         formDataToSend.append('permanentAddress', formData.permanentAddress);
-    //     }
-    //     formData.documents.forEach((doc: any, index: number) => {
-    //         formDataToSend.append(`documents`, doc.file);
-    //     });
-
-    //     try {
-    //         const response = await axios.post(`${url}/api/form/submitForm`, formDataToSend, {
-    //             headers: {
-    //                 'Content-Type': 'multipart/form-data'
-    //             }
-    //         });
-    //         console.log(response.data);
-    //     } catch (error: any) {
-    //         alert('Error submitting form: ' + error.response.data);
-    //     }
-    // };
-
     return (
-        // <form onSubmit={handleSubmit}>
-        //     <div>
-        //         <label className='text-red-800'>Name *</label>
-        //         <input type="text" name="name" value={formData.name} onChange={handleInputChange} required />
-        //     </div>
-        //     <div>
-        //         <label>Date of Birth *</label>
-        //         <input type="date" name="dob" value={formData.dob} onChange={handleInputChange} required />
-        //     </div>
-        //     <div>
-        //         <label>Residential Address *</label>
-        //         <input type="text" name="residentialAddress" value={formData.residentialAddress} onChange={handleInputChange} required />
-        //     </div>
-        //     <div>
-        //         <label>
-        //             <input type="checkbox" name="sameAsResidential" checked={formData.sameAsResidential} onChange={handleInputChange} />
-        //             Same as Residential
-        //         </label>
-        //     </div>
-        //     {!formData.sameAsResidential && (
-        //         <div>
-        //             <label>Permanent Address *</label>
-        //             <input type="text" name="permanentAddress" value={formData.permanentAddress} onChange={handleInputChange} required />
-        //         </div>
-        //     )}
-        //     <div>
-        //         <label>Upload Documents *</label>
-        //         <input type="file" multiple onChange={handleFileChange} required />
-        //     </div>
-        //     <button type="submit">Submit</button>
-        // </form>
         <Form {...form}>
             <div className='flex items-center justify-center w-full h-full'>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="w-2/3 p-6 flex flex-col gap-4">
@@ -241,18 +187,15 @@ const FormComponent = () => {
                             control={form.control}
                             name="sameAsResidential"
                             render={({ field }) => (
-                                <FormItem className='flex justify-start gap-4'>
+                                <FormItem className='flex items-center gap-4'>
                                     <FormControl>
                                         <Checkbox
                                             checked={field.value}
                                             onCheckedChange={field.onChange}
+                                            onClick={() => setDisabled((prev) => !prev)}
                                         />
                                     </FormControl>
-                                    <div >
-                                        <FormDescription>
-                                            Same as Residential Address
-                                        </FormDescription>
-                                    </div>
+                                    <h4 className="font-semibold">Same as Residential Address</h4>
                                 </FormItem>
                             )}
                         />
@@ -268,7 +211,7 @@ const FormComponent = () => {
                                 <FormItem className='w-[45%]'>
                                     <FormLabel>Street 1</FormLabel>
                                     <FormControl>
-                                        <Input {...field} className='border-[2] border-black' />
+                                        <Input {...field} className='border-[2] border-black' disabled={disabled} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -281,7 +224,7 @@ const FormComponent = () => {
                                 <FormItem className='w-[45%]'>
                                     <FormLabel>Street 2</FormLabel>
                                     <FormControl>
-                                        <Input {...field} className='border-[2] border-black' />
+                                        <Input {...field} className='border-[2] border-black' disabled={disabled} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -317,8 +260,8 @@ const FormComponent = () => {
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="pdf">pdf</SelectItem>
-                                                <SelectItem value="image">image</SelectItem>
+                                                <SelectItem value="application/pdf">pdf</SelectItem>
+                                                <SelectItem value="image/png">image</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </FormControl>
@@ -369,8 +312,8 @@ const FormComponent = () => {
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="pdf">pdf</SelectItem>
-                                                <SelectItem value="image">image</SelectItem>
+                                                <SelectItem value="application/pdf">pdf</SelectItem>
+                                                <SelectItem value={"image/png" || "image/jpeg" || "image/webp"}>image</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </FormControl>

@@ -11,14 +11,14 @@ const DateInput: React.FC<DateInputProps> = ({ name, control }) => {
     field: { onChange, onBlur, value, ref },
     fieldState: { error },
   } = useController({ name, control });
-
+  const formattedDate = value instanceof Date ? value.toISOString().substring(0, 10) : '';
   return (
     <div>
       <input
         type="date"
         onChange={(e) => onChange(new Date(e.target.value))}
         onBlur={onBlur}
-        value={value ? value.toISOString().substring(0, 10) : ''}
+        value={formattedDate}
         ref={ref}
         className="border-[2] border-black"
       />
