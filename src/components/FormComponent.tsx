@@ -30,10 +30,10 @@ const FormComponent = () => {
             street4: "",
             fileName: "",
             fileType: "",
-            file: undefined,
+            file: [],
             fileName1: "",
             fileType1: "",
-            file1: undefined
+            file1: []
         },
     });
     const notify = (value: number) => {
@@ -66,9 +66,21 @@ const FormComponent = () => {
             fileName: values.fileName1,
             fileType: values.fileType1,
             file: values.file1
-        }]
-        filesArray.forEach((doc: any) => {
-            formDataToSend.append(`documents`, doc.file);
+        }];
+
+        values.file.forEach((fileObj, index) => {
+            formDataToSend.append(`documents`, fileObj);
+        });
+
+        values.file1.forEach((fileObj, index) => {
+            formDataToSend.append(`documents`, fileObj);
+        });
+
+        filesArray.forEach((doc, index) => {
+            if (doc.file) {
+                formDataToSend.append(`documentsfileName${index}`, doc.fileName);
+                formDataToSend.append(`documentsfileType${index}`, doc.fileType);
+            }
         });
 
         try {
@@ -79,7 +91,7 @@ const FormComponent = () => {
             });
             if (response.status == 200) {
                 notify(200);
-                form.reset();
+                // form.reset();
             } else if (response.status == 400) {
                 notify(400);
             }
