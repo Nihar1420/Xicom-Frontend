@@ -1,17 +1,25 @@
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { Button } from "./ui/button"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "./ui/form"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "./ui/select"
-import { Input } from "./ui/input"
-import { z } from "zod"
-import axios from 'axios';
-import { formSchema } from '../lib/validator';
-import { Checkbox } from './ui/checkbox';
-import FileInput from './FileInput';
-import DateInput from './DateInput';
-import { useState } from "react"
-import { toast } from "react-toastify"
+import { useState } from "react";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import axios from "axios";
+import { formSchema } from "../lib/validator";
+import { Button } from "./ui/button";
+import {
+    Form,
+    FormControl,
+    FormDescription,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "./ui/form";
+import { Input } from "./ui/input";
+import { Checkbox } from "./ui/checkbox";
+import DateInput from "./DateInput";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { toast } from "react-toastify";
+import { SquarePlus, Trash2 } from "lucide-react";
 
 const FormComponent = () => {
     const [disabled, setDisabled] = useState<boolean>(false);
@@ -28,91 +36,77 @@ const FormComponent = () => {
             street2: "",
             street3: "",
             street4: "",
-            fileName: "",
-            fileType: "",
-            file: [],
-            fileName1: "",
-            fileType1: "",
-            file1: []
+            documents: [{ fileName: "", fileType: "", file: undefined }],
         },
     });
-    const notify = (value: number) => {
+
+    const { fields, append, remove } = useFieldArray({
+        control: form.control,
+        name: "documents",
+    });
+
+    const notify = (value: any) => {
         if (value === 200) {
-            toast.success("Successfully submitted the form !", {
-                position: "top-right"
+            toast.success("Successfully submitted the form!", {
+                position: "top-right",
             });
-        } else if (value === 400) {
-            toast.error("Something went wrong", {
-                position: "top-right"
+        } else if (value === "At least two documents are required") {
+            toast.error("Minimum 2 docs are required", {
+                position: "top-right",
             });
         }
     };
+
     async function onSubmit(values: z.infer<typeof formSchema>) {
         const formDataToSend = new FormData();
-        formDataToSend.append('name', values.firstname + " " + values.lastname);
-        formDataToSend.append('dob', values.dob.toISOString());
-        formDataToSend.append('email', values.email);
-        formDataToSend.append('residentialAddress', values.street1 + " " + values.street2);
-        formDataToSend.append('sameAsResidential', String(values.sameAsResidential));
+        formDataToSend.append("name", values.firstname + " " + values.lastname);
+        formDataToSend.append("dob", values.dob.toISOString());
+        formDataToSend.append("email", values.email);
+        formDataToSend.append("residentialAddress", values.street1 + " " + values.street2);
+        formDataToSend.append("sameAsResidential", String(values.sameAsResidential));
         if (!values.sameAsResidential) {
-            formDataToSend.append('permanentAddress', values.street3 + " " + values.street4);
+            formDataToSend.append("permanentAddress", values.street3 + " " + values.street4);
         }
-        const filesArray = [{
-            fileName: values.fileName,
-            fileType: values.fileType,
-            file: values.file
-        },
-        {
-            fileName: values.fileName1,
-            fileType: values.fileType1,
-            file: values.file1
-        }];
 
-        values.file.forEach((fileObj, index) => {
-            formDataToSend.append(`documents`, fileObj);
-        });
-
-        values.file1.forEach((fileObj, index) => {
-            formDataToSend.append(`documents`, fileObj);
-        });
-
-        filesArray.forEach((doc, index) => {
+        values.documents.forEach((doc, index) => {
             if (doc.file) {
-                formDataToSend.append(`documentsfileName${index}`, doc.fileName);
-                formDataToSend.append(`documentsfileType${index}`, doc.fileType);
+                formDataToSend.append(`documentsfileName`, doc.fileName);
+                formDataToSend.append(`documentsfileType`, doc.fileType);
+                formDataToSend.append("documents", doc.file);
             }
         });
 
         try {
             const response = await axios.post(`${url}/api/form/submitForm`, formDataToSend, {
                 headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
+                    "Content-Type": "multipart/form-data",
+                },
             });
-            if (response.status == 200) {
-                notify(200);
-                // form.reset();
-            } else if (response.status == 400) {
-                notify(400);
-            }
+            form.reset();
+            setDisabled(false);
+            notify(response.status);
         } catch (error: any) {
-            alert('Error submitting form: ' + error.response.data);
+            notify(error.response.data.message);
         }
     }
 
     return (
         <Form {...form}>
-            <div className='flex items-center justify-center w-full h-full'>
+            <div className="flex items-center justify-center w-full h-full">
                 <form onSubmit={form.handleSubmit(onSubmit)} className="w-2/3 p-6 flex flex-col gap-4">
-                    <div className='flex justify-between'>
+                    <div className="flex justify-between">
                         <FormField
                             control={form.control}
                             name="firstname"
                             render={({ field }) => (
-                                <FormItem className='w-[45%]'>
+                                <FormItem className="w-[45%]">
                                     <FormLabel>First Name</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Enter your first name here.." {...field} className='border-[2] border-black' />
+                                        <Input
+                                            placeholder="Enter your first name here.."
+                                            {...field}
+                                            className="border-[2] border-black"
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -122,25 +116,33 @@ const FormComponent = () => {
                             control={form.control}
                             name="lastname"
                             render={({ field }) => (
-                                <FormItem className='w-[45%]'>
+                                <FormItem className="w-[45%]">
                                     <FormLabel>Last Name</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Enter your last name here.." {...field} className='border-[2] border-black' />
+                                        <Input
+                                            placeholder="Enter your last name here.."
+                                            {...field}
+                                            className="border-[2] border-black"
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
                     </div>
-                    <div className='flex justify-between'>
+                    <div className="flex justify-between">
                         <FormField
                             control={form.control}
                             name="email"
                             render={({ field }) => (
-                                <FormItem className='w-[45%]'>
+                                <FormItem className="w-[45%]">
                                     <FormLabel>E-mail</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="ex:example@mymail.com" {...field} className='border-[2] border-black' />
+                                        <Input
+                                            placeholder="ex:example@mymail.com"
+                                            {...field}
+                                            className="border-[2] border-black"
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -150,31 +152,27 @@ const FormComponent = () => {
                             control={form.control}
                             name="dob"
                             render={({ field }) => (
-                                <FormItem className='w-[45%]'>
+                                <FormItem className="w-[45%]">
                                     <FormLabel>Date of Birth</FormLabel>
                                     <FormControl>
                                         <DateInput {...field} control={form.control} />
                                     </FormControl>
-                                    <FormDescription>
-                                        (Min.age should be 18 Years)
-                                    </FormDescription>
+                                    <FormDescription>(Min.age should be 18 Years)</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
                     </div>
-                    <h4 className="scroll-m-20 font-semibold tracking-tight">
-                        Residential Address
-                    </h4>
-                    <div className='flex justify-between'>
+                    <h4 className="scroll-m-20 font-semibold tracking-tight">Residential Address</h4>
+                    <div className="flex justify-between">
                         <FormField
                             control={form.control}
                             name="street1"
                             render={({ field }) => (
-                                <FormItem className='w-[45%]'>
+                                <FormItem className="w-[45%]">
                                     <FormLabel>Street 1</FormLabel>
                                     <FormControl>
-                                        <Input {...field} className='border-[2] border-black' />
+                                        <Input {...field} className="border-[2] border-black" />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -184,10 +182,10 @@ const FormComponent = () => {
                             control={form.control}
                             name="street2"
                             render={({ field }) => (
-                                <FormItem className='w-[45%]'>
+                                <FormItem className="w-[45%]">
                                     <FormLabel>Street 2</FormLabel>
                                     <FormControl>
-                                        <Input {...field} className='border-[2] border-black' />
+                                        <Input {...field} className="border-[2] border-black" />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -199,7 +197,7 @@ const FormComponent = () => {
                             control={form.control}
                             name="sameAsResidential"
                             render={({ field }) => (
-                                <FormItem className='flex items-center gap-4'>
+                                <FormItem className="flex items-center gap-4">
                                     <FormControl>
                                         <Checkbox
                                             checked={field.value}
@@ -207,23 +205,21 @@ const FormComponent = () => {
                                             onClick={() => setDisabled((prev) => !prev)}
                                         />
                                     </FormControl>
-                                    <h4 className="font-semibold">Same as Residential Address</h4>
+                                    <h4 className="font-semibold self-center">Same as Residential Address</h4>
                                 </FormItem>
                             )}
                         />
                     </div>
-                    <h4 className="scroll-m-20 font-semibold tracking-tight">
-                        Permanent Address
-                    </h4>
-                    <div className='flex justify-between'>
+                    <h4 className="scroll-m-20 font-semibold tracking-tight">Permanent Address</h4>
+                    <div className="flex justify-between">
                         <FormField
                             control={form.control}
                             name="street3"
                             render={({ field }) => (
-                                <FormItem className='w-[45%]'>
+                                <FormItem className="w-[45%]">
                                     <FormLabel>Street 1</FormLabel>
                                     <FormControl>
-                                        <Input {...field} className='border-[2] border-black' disabled={disabled} />
+                                        <Input {...field} className="border-[2] border-black" disabled={disabled} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -233,124 +229,93 @@ const FormComponent = () => {
                             control={form.control}
                             name="street4"
                             render={({ field }) => (
-                                <FormItem className='w-[45%]'>
+                                <FormItem className="w-[45%]">
                                     <FormLabel>Street 2</FormLabel>
                                     <FormControl>
-                                        <Input {...field} className='border-[2] border-black' disabled={disabled} />
+                                        <Input {...field} className="border-[2] border-black" disabled={disabled} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
                     </div>
-                    <h4 className="scroll-m-20 font-semibold tracking-tight">
-                        Upload Documents
-                    </h4>
-                    <div className='flex justify-between'>
-                        <FormField
-                            control={form.control}
-                            name="fileName"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>File Name</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} className='border-[2] border-black' />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="fileType"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Type of File</FormLabel>
-                                    <FormControl>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <SelectTrigger className="w-[180px] border-[2]">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="application/pdf">pdf</SelectItem>
-                                                <SelectItem value="image/png">image</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </FormControl>
-                                    <FormDescription>
-                                        (image,pdf.)
-                                    </FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="file"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Upload Document</FormLabel>
-                                    <FormControl>
-                                        <FileInput {...field} control={form.control} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                    <div className='flex justify-between'>
-                        <FormField
-                            control={form.control}
-                            name="fileName1"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>File Name</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} className='border-[2] border-black' />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="fileType1"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Type of File</FormLabel>
-                                    <FormControl>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <SelectTrigger className="w-[180px] border-[2]">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="application/pdf">pdf</SelectItem>
-                                                <SelectItem value={"image/png" || "image/jpeg" || "image/webp"}>image</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </FormControl>
-                                    <FormDescription>
-                                        (image,pdf.)
-                                    </FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="file1"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Upload Document</FormLabel>
-                                    <FormControl>
-                                        <FileInput {...field} control={form.control} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                    <Button type="submit">Submit</Button>
+                    <h4 className="scroll-m-20 font-semibold tracking-tight">Upload Documents</h4>
+                    {fields.map((field, index) => (
+                        <div key={field.id} className="flex justify-between items-center mb-4">
+                            <FormField
+                                control={form.control}
+                                name={`documents.${index}.fileName`}
+                                render={({ field }) => (
+                                    <FormItem className="w-[25%]">
+                                        <FormLabel>File Name</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} className="border-[2] border-black" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name={`documents.${index}.fileType`}
+                                render={({ field }) => (
+                                    <FormItem className="w-[25%]">
+                                        <FormLabel>Type of File</FormLabel>
+                                        <FormControl>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <SelectTrigger className="w-[180px] border-[2]">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="application/pdf">pdf</SelectItem>
+                                                    <SelectItem value="image/png">image/png</SelectItem>
+                                                    <SelectItem value="image/jpeg">image/jpeg</SelectItem>
+                                                    <SelectItem value="image/gif">image/gif</SelectItem>
+                                                    <SelectItem value="image/webp">image/webp</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name={`documents.${index}.file`}
+                                render={({ field }) => (
+                                    <FormItem className="w-[40%]">
+                                        <FormLabel>Upload File</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="file"
+                                                onChange={(e) => field.onChange(e.target.files?.[0])}
+                                                className="border-[2] border-black"
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            {
+                                index === 0 ? (
+                                    <Button
+                                        type="button"
+                                        onClick={() => append({ fileName: "", fileType: "", file: undefined })}
+                                        className="ml-4 self-end"
+                                    >
+                                        <SquarePlus className="h-4 w-4" />
+                                    </Button>
+                                ) : (
+                                    <Button type="button" onClick={() => remove(index)} className="ml-4 self-end">
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                )
+                            }
+                        </div>
+                    ))}
+                    <Button type="submit" className="mt-4">
+                        Submit
+                    </Button>
                 </form>
             </div>
         </Form>

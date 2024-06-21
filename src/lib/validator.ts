@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+function getFileExtension(fileName: string): string {
+  return fileName?.split(".").pop()?.toLowerCase() ?? "";
+}
+
+const fileSchema = z.object({
+  fileName: z.string().nonempty({ message: "File name is required" }),
+  fileType: z.string().nonempty({ message: "File type is required" }),
+  file: z.any(),
+});
+
 export const formSchema = z
   .object({
     firstname: z.string().nonempty({ message: "First name is required" }),
@@ -18,26 +28,22 @@ export const formSchema = z
     street2: z.string().nonempty({ message: "Street 2 is required" }),
     street3: z.string().optional(),
     street4: z.string().optional(),
-    fileName: z.string().nonempty({ message: "File name is required" }),
-    fileType: z.string().nonempty({ message: "File type is required" }),
-    file: z.array(
-      z
-        .instanceof(File)
-        .refine((file) => file instanceof File && file.size <= 5000000, {
-          message: "File size should be less than 5MB",
-        })
-    ),
-    fileName1: z.string().nonempty({ message: "File name is required" }),
-    fileType1: z.string().nonempty({ message: "File type is required" }),
-    file1: z.array(
-      z
-        .instanceof(File)
-        .refine((file) => file instanceof File && file.size <= 5000000, {
-          message: "File size should be less than 5MB",
-        })
-    ),
+    documents: z
+      .array(fileSchema)
+      .min(1, { message: "At least one document is required" }),
   })
   .superRefine((data, ctx) => {
+    data.documents.forEach((document, index) => {
+    const uploadedFileType = getFileExtension(document.file?.name);
+    const fileType = document.fileType.split("/")[1];
+    if (fileType !== uploadedFileType) {
+      ctx.addIssue({
+        path: ["documents", index, "file"],
+        message: "File type does not match the uploaded file type",
+        code: "custom",
+      });
+    }
+  });
     if (!data.sameAsResidential) {
       if (!data.street3) {
         ctx.addIssue({
@@ -54,16 +60,4 @@ export const formSchema = z
         });
       }
     }
-    const fileChecks = [...(data.file || []), ...(data.file1 || [])];
-    const validMimeTypes = ["application/pdf", "image/png", "image/jpeg", "image/gif", "image/webp"];
-
-    fileChecks.forEach((file, index) => {
-      if (!validMimeTypes.includes(file.type)) {
-        ctx.addIssue({
-          path: ['files', index],
-          message: `Invalid file type: ${file.type}`,
-          code: "custom",
-        });
-      }
-    });
   });
